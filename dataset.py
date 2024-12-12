@@ -1,6 +1,5 @@
 from torch.utils.data import Dataset 
 import torch 
-from transformers import AutoTokenizer
 
 class Vocabulary:
     def __init__(self, data, special_tokens=["<PAD>", "<UNK>", "<BOS>", "<EOS>"]):
@@ -14,12 +13,12 @@ class Vocabulary:
         self.tok2id = {v: k for k, v in self.id2tok.items()} # we turn the keys and values
         self.vocab_size = len(self.tok2id)
 
-def _create_id2tok(self):
-    tokens = list(set(" ".join(self.data).split()))
-    # combine special tokens and unique tokens into a single listn where the specials come first
-    all_tokens = list(self.special_tokens.keys()) + tokens
-    return {i: tok for i, tok in enumerate(all_tokens)} # all enumerated starting from 0-3 for specials and 
-    # from 4 on for other tokens
+    def _create_id2tok(self):
+        tokens = list(set(" ".join(self.data).split()))
+        # combine special tokens and unique tokens into a single listn where the specials come first
+        all_tokens = list(self.special_tokens.keys()) + tokens
+        return {i: tok for i, tok in enumerate(all_tokens)} # all enumerated starting from 0-3 for specials and 
+        # from 4 on for other tokens
 
 class SCANDataset(Dataset): 
     def __init__(self, file_path, max_len=128): 
@@ -69,12 +68,12 @@ class SCANDataset(Dataset):
 if __name__ == "__main__": 
     dataset = SCANDataset("tasks.txt")
     print(dataset[0])
-    print(dataset[0]["src"])
-    print(dataset[0]["tgt"])
+    print(dataset[0]["command"])
+    print(dataset[0]["action"])
     print(dataset.src_vocab.vocab_size)
     print(dataset.tgt_vocab.vocab_size)
-    print(dataset.decode(dataset[0]["src"], dataset.src_vocab))
-    print(dataset.decode(dataset[0]["tgt"], dataset.tgt_vocab))
+    print(dataset.decode(dataset[0]["command"], dataset.src_vocab))
+    print(dataset.decode(dataset[0]["action"], dataset.tgt_vocab))
 
 
 import os
