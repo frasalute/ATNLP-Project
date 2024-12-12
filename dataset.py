@@ -75,3 +75,7 @@ if __name__ == "__main__":
     print(dataset.tgt_vocab.vocab_size)
     print(dataset.decode(dataset[0]["src"], dataset.src_vocab))
     print(dataset.decode(dataset[0]["tgt"], dataset.tgt_vocab))
+
+
+import os
+print (os.getcwd())
