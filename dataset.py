@@ -1,7 +1,6 @@
 from torch.utils.data import Dataset 
 import torch 
 from transformers import AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 class Vocabulary:
     def __init__(self, data, special_tokens=["<PAD>", "<UNK>", "<BOS>", "<EOS>"]):
@@ -67,3 +66,12 @@ class SCANDataset(Dataset):
         return {"command": torch.tensor(command_tokens), "action": torch.tensor(action_tokens)}
         # returning a tensor so we can train the transformer
         
+if __name__ == "__main__": 
+    dataset = SCANDataset("tasks.txt")
+    print(dataset[0])
+    print(dataset[0]["src"])
+    print(dataset[0]["tgt"])
+    print(dataset.src_vocab.vocab_size)
+    print(dataset.tgt_vocab.vocab_size)
+    print(dataset.decode(dataset[0]["src"], dataset.src_vocab))
+    print(dataset.decode(dataset[0]["tgt"], dataset.tgt_vocab))
