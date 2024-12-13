@@ -343,3 +343,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# COMMENTO SUL SOFTMAX CHE STA NEL TRAINING E LA LINEAR CHE STA NELLA SEZIONE LINEAR
