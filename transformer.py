@@ -243,6 +243,13 @@ class Decoder(nn.Module):
 
         return output # represent the predicted logits for each token in the target sequence
 
+''' After Encoder and Decoder we have a Linear Layer and then Softmax before the Output Probabilities. 
+Here the Linear Layer to project the output in the vocabulary space is presented in the class called Decoder 
+and then the class called Transformer presenting all combined steps is created. 
+For softmax is done at the training level with the calculation of the cross entropy loss.
+The softmax is not included at the creation of the model level because the loss function 
+applies it automatically during training. It gives flexibility to apply softmax only when needed, 
+such as during inference.'''
 # implement the full transformer combining the Encoder and Decoder components
 class Transformer(nn.Module):
     def __init__(
@@ -343,5 +350,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# COMMENTO SUL SOFTMAX CHE STA NEL TRAINING E LA LINEAR CHE STA NELLA SEZIONE LINEAR
