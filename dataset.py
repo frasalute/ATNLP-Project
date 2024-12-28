@@ -66,7 +66,7 @@ class SCANDataset(Dataset):
         # returning a tensor so we can train the transformer
         
 if __name__ == "__main__": 
-    dataset = SCANDataset("tasks.txt")
+    dataset = SCANDataset("/Users/francescasalute/Dropbox/Mac/Documents/Master in Data Science/Third Semester/Advanced NLP/ATNLP-Project/data/tasks.txt")
     print(dataset[0])
     print(dataset[0]["command"])
     print(dataset[0]["action"])

@@ -51,7 +51,7 @@ class MultiHeadAttention(nn.Module):
 
         # for the Decoder, apply a mask to not see the next words 
         if mask is not None:
-            key_out = key_out.masked_fill(mask == 0, -1e20)
+            attn_score = attn_score.masked_fill(mask == 0, -1e9)
 
         # apply softmax
         key_out = torch.softmax(key_out / self.head_dim**0.5, dim=-1)
@@ -142,11 +142,8 @@ class Encoder(nn.Module):
 
         # Positional Encoding 
         pos_weight = get_sinusoid_table(max_len + 1, emb_dim)
-        # Input embedding
-        self.tok_emb = nn.Embedding(vocab_size, emb_dim, _freeze=True)
-        self.pos_emb = nn.Embedding(max_len, emb_dim, _freeze=True).from_pretrained(
-            pos_weight
-        )
+        self.tok_emb = nn.Embedding(vocab_size, emb_dim)
+        self.pos_emb = nn.Embedding.from_pretrained(pos_weight, freeze=True)
 
         self.transformer_blocks = nn.ModuleList(
             [
@@ -158,7 +155,8 @@ class Encoder(nn.Module):
     def forward(self, x, mask):
         seq_len = x.size(1)
         tok_emb = self.tok_emb(x).to(device=x.device)
-        pos_emb = self.pos_emb(torch.arange(1, seq_len + 1, device=x.device))
+        pos_indices = torch.arange(1, seq_len + 1, device=x.device)  # [seq_len]
+        pos_emb = self.pos_emb(pos_indices)
         embedding = tok_emb + pos_emb.unsqueeze(0)
         embedding = self.dropout(embedding)
 
@@ -209,48 +207,36 @@ class Decoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.max_len = max_len
 
-        # Target sentence embedding
-        self.tok_emb = nn.Embedding(vocab_size, emb_dim, _freeze=True)
-        # Positional encoding
-        self.pos_emb = nn.Embedding(max_len, emb_dim)
+        pos_weight = get_sinusoid_table(max_len + 1, emb_dim)
+        self.pos_emb = nn.Embedding.from_pretrained(pos_weight, freeze=True)
+        self.tok_emb = nn.Embedding(vocab_size, emb_dim)
         self.decoder_blocks = nn.ModuleList(
             [
                 DecoderBlock(emb_dim, num_heads, forward_dim, dropout)
-                for i in range(num_layers)
+                for _ in range(num_layers)
             ]
         )
         self.out_layer = nn.Linear(emb_dim, vocab_size)
+
 
     def forward(self, x, encoder_out, src_mask, tgt_mask):
         # input x is the taget embedding
         tok_emb = self.tok_emb(x)
         seq_len = x.size(1)
-        # Positional Encoding
-        positions = (
-            torch.arange(seq_len, device=x.device)
-            .unsqueeze(0)
-            .expand(x.size(0), seq_len)
-        )
-        pos_emb = self.pos_emb(positions)
-        embedding = tok_emb + pos_emb
+        pos_indices = torch.arange(1, seq_len + 1, device=x.device)  
+        pos_emb = self.pos_emb(pos_indices)  
+
+        embedding = tok_emb + pos_emb.unsqueeze(0)  
+        embedding = self.dropout(embedding)
 
         # Pass Through Decoder Blocks
         for block in self.decoder_blocks:
             output = block(embedding, encoder_out, encoder_out, src_mask, tgt_mask)
 
-        # Linear Layer: to project the output to Vocabulary Space
-        output = self.out_layer(output)
+        output = self.out_layer(embedding) 
+        return output
 
-        return output # represent the predicted logits for each token in the target sequence
 
-''' After Encoder and Decoder we have a Linear Layer and then Softmax before the Output Probabilities. 
-Here the Linear Layer to project the output in the vocabulary space is presented in the class called Decoder 
-and then the class called Transformer presenting all combined steps is created. 
-For softmax is done at the training level with the calculation of the cross entropy loss.
-The softmax is not included at the creation of the model level because the loss function 
-applies it automatically during training. It gives flexibility to apply softmax only when needed, 
-such as during inference.'''
-# implement the full transformer combining the Encoder and Decoder components
 class Transformer(nn.Module):
     def __init__(
         self,
