@@ -1,25 +1,20 @@
 from torch.utils.data import Dataset 
-import torch 
-
+import torch
 class Vocabulary:
     def __init__(self, data, special_tokens=["<PAD>", "<UNK>", "<BOS>", "<EOS>"]):
         self.data = data
         self.special_tokens = {tok: i for i, tok in enumerate(special_tokens)}
-        # i, tok in enumerate (special_tokens) create a list with index (i) and value (tok) which gives us
-        # indexing of the tokens so ex: 0-->PAD 
-        # we then use this to create a dictionary and so we set it to be tok:i because tok is the key and i is
-        # the value
         self.id2tok = self._create_id2tok()
-        self.tok2id = {v: k for k, v in self.id2tok.items()} # we turn the keys and values
+        self.tok2id = {v: k for k, v in self.id2tok.items()}
         self.vocab_size = len(self.tok2id)
 
     def _create_id2tok(self):
+        num_special_tokens = len(self.special_tokens)
         tokens = list(set(" ".join(self.data).split()))
-        # combine special tokens and unique tokens into a single listn where the specials come first
-        all_tokens = list(self.special_tokens.keys()) + tokens
-        return {i: tok for i, tok in enumerate(all_tokens)} # all enumerated starting from 0-3 for specials and 
-        # from 4 on for other tokens
-
+        id2tok = dict(enumerate(tokens, start=num_special_tokens))
+        id2tok.update({v: k for k, v in self.special_tokens.items()})
+        
+        return id2tok
 class SCANDataset(Dataset): 
     def __init__(self, file_path, max_len=128): 
         self.file_path = file_path 
@@ -41,13 +36,12 @@ class SCANDataset(Dataset):
 
     def encode(self, text, vocab):
         tokens = text.split()
-        tokens = [vocab.tok2id.get(tok, vocab.tok2id["<UNK>"]) for tok in tokens] # recognizing a word or unknown
+        tokens = [vocab.tok2id.get(tok, vocab.tok2id["<UNK>"]) for tok in tokens]
         tokens = [vocab.tok2id["<BOS>"]] + tokens + [vocab.tok2id["<EOS>"]]
         tokens = tokens[:self.max_len-1]
-        tokens += [vocab.tok2id["<PAD>"]] * (self.max_len - len(tokens)) # check difference between max lenght and
-        # token and adding PADs
+        tokens += [vocab.tok2id["<PAD>"]] * (self.max_len - len(tokens))
         return tokens
-    
+
     def decode(self, tokens, vocab):
         tokens = [int(tok) for tok in tokens]
         tokens = [vocab.id2tok.get(tok, "<UNK>") for tok in tokens]
@@ -58,23 +52,19 @@ class SCANDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx): 
-        command_text = self.data[idx]["command"]
-        action_text = self.data[idx]["action"]
-        command_tokens = self.encode(command_text, self.src_vocab) # compare the text to the vocabulary
-        action_tokens = self.encode(action_text, self.tgt_vocab)
-        return {"command": torch.tensor(command_tokens), "action": torch.tensor(action_tokens)}
-        # returning a tensor so we can train the transformer
-        
+        src_text = self.data[idx]["command"]
+        tgt_text = self.data[idx]["action"]
+        src_tokens = self.encode(src_text, self.src_vocab)
+        tgt_tokens = self.encode(tgt_text, self.tgt_vocab)
+        return {"src": torch.tensor(src_tokens), "tgt": torch.tensor(tgt_tokens)}
+
+
 if __name__ == "__main__": 
-    dataset = SCANDataset("/Users/francescasalute/Dropbox/Mac/Documents/Master in Data Science/Third Semester/Advanced NLP/ATNLP-Project/data/tasks.txt")
+    dataset = SCANDataset("/work/ATNLP-Project/data/tasks.txt")
     print(dataset[0])
-    print(dataset[0]["command"])
-    print(dataset[0]["action"])
+    print(dataset[0]["src"])
+    print(dataset[0]["tgt"])
     print(dataset.src_vocab.vocab_size)
     print(dataset.tgt_vocab.vocab_size)
-    print(dataset.decode(dataset[0]["command"], dataset.src_vocab))
-    print(dataset.decode(dataset[0]["action"], dataset.tgt_vocab))
-
-
-import os
-print (os.getcwd())
+    print(dataset.decode(dataset[0]["src"], dataset.src_vocab))
+    print(dataset.decode(dataset[0]["tgt"], dataset.tgt_vocab))

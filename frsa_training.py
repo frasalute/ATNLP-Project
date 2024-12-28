@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from dataset import SCANDataset
-from model.transformer import Transformer
+from transformer import Transformer
 from tqdm import tqdm
 from pathlib import Path
 import numpy as np
