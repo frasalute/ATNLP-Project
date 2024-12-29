@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/francescasalute/Dropbox/Mac/Documents/Master in Data Science/Third Semester/Advanced NLP/ATNLP-Project')
+sys.path.append('/work/ATNLP-Project')
 from testing import train
 import torch
 import numpy as np
@@ -8,7 +8,7 @@ from dataset import SCANDataset
 
 def get_dataset_pairs():
     """Get pairs of training and test dataset paths."""
-    base_path = "/Users/francescasalute/Dropbox/Mac/Documents/Master in Data Science/Third Semester/Advanced NLP/ATNLP-Project/data/simple_split/size_variations"
+    base_path = "/work/ATNLP-Project/data/simple_split/size_variations"
     sizes = ["1", "2", "4", "8", "16", "32", "64"]
     pairs = []
     for size in sizes:
