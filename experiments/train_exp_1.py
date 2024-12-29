@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/Users/francescasalute/Dropbox/Mac/Documents/Master in Data Science/Third Semester/Advanced NLP/ATNLP-Project')
-from frsa_training import train
+from testing import train
 import torch
 import numpy as np
 from dataset import SCANDataset

@@ -46,26 +46,27 @@ class MultiHeadAttention(nn.Module):
         key = self._split_heads(key)
         value = self._split_heads(value)
 
-        # dot product Q x K
-        key_out = query @ key.transpose(-2, -1)
+        # dot product Q x K (Scaled Dot-Product Attention)
+        attn_score = query @ key.transpose(-2, -1) / math.sqrt(self.head_dim)
 
-        # for the Decoder, apply a mask to not see the next words 
+        # apply mask to attention scores
         if mask is not None:
             attn_score = attn_score.masked_fill(mask == 0, -1e9)
 
-        # apply softmax
-        key_out = torch.softmax(key_out / self.head_dim**0.5, dim=-1)
+        # apply softmax to normalize attention scores
+        attn_weights = torch.softmax(attn_score, dim=-1)
 
-        # dot product Key output x V
-        attn = key_out @ value
+        # dot product Attention Weights x V
+        attn = attn_weights @ value
 
         # Concatenate the heads together
         attn = self._merge_heads(attn)
 
-        # concatenated all the single self-attention outputs back to the original embedding dimension
+        # Project back to the original embedding dimension
         attn_output = self.out_proj(attn)
 
         return attn_output
+
 
 # Implements the core logic of the Transformer, including multi-head attention and feedforward processing, with normalization and skip connections
 class TransformerBlock(nn.Module):
@@ -233,7 +234,7 @@ class Decoder(nn.Module):
         for block in self.decoder_blocks:
             output = block(embedding, encoder_out, encoder_out, src_mask, tgt_mask)
 
-        output = self.out_layer(embedding) 
+        output = self.out_layer(output) 
         return output
 
 
