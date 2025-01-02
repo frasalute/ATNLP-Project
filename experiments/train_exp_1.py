@@ -1,4 +1,6 @@
 import sys
+import json
+import matplotlib.pyplot as plt
 sys.path.append('/work/ATNLP-Project')
 from testing import train
 import torch
@@ -18,6 +20,56 @@ def get_dataset_pairs():
     return pairs
 
 
+def save_results(results, filename="results.json"):
+    """Save results to a JSON file."""
+    with open(filename, "w") as f:
+        json.dump(results, f, indent=4)
+    print(f"Results saved to {filename}")
+
+
+def plot_histograms(results, filename_prefix="histogram"):
+    """Plot histograms for token and sequence accuracy."""
+    dataset_sizes = []
+    token_means = []
+    token_stds = []
+    seq_means = []
+    seq_stds = []
+
+    for size, accuracies in results.items():
+        valid_accuracies = [acc for acc in accuracies if acc is not None]
+        if valid_accuracies:
+            token_accuracies = [acc[0] for acc in valid_accuracies]
+            seq_accuracies = [acc[1] for acc in valid_accuracies]
+
+            dataset_sizes.append(size)
+            token_means.append(np.mean(token_accuracies))
+            token_stds.append(np.std(token_accuracies))
+            seq_means.append(np.mean(seq_accuracies))
+            seq_stds.append(np.std(seq_accuracies))
+
+    # Plot Token Accuracy Histogram
+    plt.figure(figsize=(10, 6))
+    plt.bar(dataset_sizes, token_means, yerr=token_stds, capsize=5, alpha=0.7, label="Token Accuracy")
+    plt.xlabel("Dataset Size")
+    plt.ylabel("Accuracy")
+    plt.title("Token Accuracy by Dataset Size")
+    plt.legend()
+    plt.savefig(f"{filename_prefix}_token_accuracy.png")
+    print(f"Token accuracy histogram saved to {filename_prefix}_token_accuracy.png")
+    plt.close()
+
+    # Plot Sequence Accuracy Histogram
+    plt.figure(figsize=(10, 6))
+    plt.bar(dataset_sizes, seq_means, yerr=seq_stds, capsize=5, alpha=0.7, label="Sequence Accuracy", color="orange")
+    plt.xlabel("Dataset Size")
+    plt.ylabel("Accuracy")
+    plt.title("Sequence Accuracy by Dataset Size")
+    plt.legend()
+    plt.savefig(f"{filename_prefix}_sequence_accuracy.png")
+    print(f"Sequence accuracy histogram saved to {filename_prefix}_sequence_accuracy.png")
+    plt.close()
+
+
 def run_all_variations(n_runs=1):
     """Run training multiple times for all dataset size variations with different seeds."""
     results = {f"p{size}": [] for _, _, size in get_dataset_pairs()}
@@ -31,7 +83,6 @@ def run_all_variations(n_runs=1):
         "dropout": 0.05,
         "learning_rate": 7e-4,
         "batch_size": 64,
-        "warmup_steps": 4000,
         "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     }
 
@@ -71,6 +122,10 @@ def run_all_variations(n_runs=1):
                 print(f"Error during training/testing for p{size}: {e}")
                 results[f"p{size}"].append(None)
 
+    # Save results to file
+    save_results(results)
+
+    # Print results summary
     print("\nFinal Results Summary:")
     print("=" * 50)
     print("Dataset Size | Mean Token Accuracy ± Std Dev | Mean Sequence Accuracy ± Std Dev")
@@ -90,6 +145,9 @@ def run_all_variations(n_runs=1):
             print(f"{size:11} | {mean_token_acc:.4f} ± {std_token_acc:.4f}          | {mean_seq_acc:.4f} ± {std_seq_acc:.4f}")
         else:
             print(f"{size:11} | No results available (errors encountered)")
+
+    # Generate histograms
+    plot_histograms(results)
 
 
 if __name__ == "__main__":
