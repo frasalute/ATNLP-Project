@@ -78,15 +78,15 @@ def evaluate(model, data_loader, criterion, pad_idx, device):
 
 
 
-def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size, device):
-    """Beam search decoding for autoregressive generation, with per-sequence processing."""
+def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size, device, pad_idx):
+    """Beam search decoding for autoregressive generation."""
     model.eval()
     src = src.to(device)
 
     batch_size = src.size(0)
     beams = [
         [(torch.ones(1, 1).fill_(start_symbol).long().to(device), 0)] for _ in range(batch_size)
-    ]  # Initialize beams for each sequence in the batch
+    ]
 
     finished_sequences = [[] for _ in range(batch_size)]
 
@@ -95,7 +95,7 @@ def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size,
         for batch_idx in range(batch_size):
             for seq, score in beams[batch_idx]:
                 out = model(src[batch_idx].unsqueeze(0), seq)  # Process one sequence
-                prob = torch.log_softmax(out[:, -1], dim=-1)  # Get probabilities for the next token
+                prob = torch.log_softmax(out[:, -1], dim=-1)
                 topk_prob, topk_idx = prob.topk(beam_size, dim=-1)
 
                 for i in range(beam_size):
@@ -103,10 +103,7 @@ def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size,
                     new_score = score + topk_prob[0, i].item()
                     all_candidates[batch_idx].append((new_seq, new_score))
 
-            # Keep top beams for the current sequence
             all_candidates[batch_idx] = sorted(all_candidates[batch_idx], key=lambda x: x[1], reverse=True)[:beam_size]
-
-            # Separate finished sequences
             beams[batch_idx] = []
             for seq, score in all_candidates[batch_idx]:
                 if seq[0, -1] == end_symbol:
@@ -114,7 +111,6 @@ def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size,
                 else:
                     beams[batch_idx].append((seq, score))
 
-        # Break if all beams are finished
         if all(len(beams[b]) == 0 for b in range(batch_size)):
             break
 
@@ -123,11 +119,20 @@ def beam_search_decode(model, src, max_len, start_symbol, end_symbol, beam_size,
     for batch_idx in range(batch_size):
         if finished_sequences[batch_idx]:
             best_seq = max(finished_sequences[batch_idx], key=lambda x: x[1])
-        else:  # If no finished sequences, take the highest-scoring unfinished beam
+        else:
             best_seq = max(beams[batch_idx], key=lambda x: x[1])
         best_sequences.append(best_seq[0])
 
-    return torch.cat(best_sequences, dim=0)  # Combine sequences into a batch
+    # Pad sequences to the same length
+    max_seq_len = max(seq.size(1) for seq in best_sequences)
+    padded_sequences = [
+        torch.cat([seq, torch.full((1, max_seq_len - seq.size(1)), pad_idx, device=seq.device)], dim=1)
+        if seq.size(1) < max_seq_len else seq
+        for seq in best_sequences
+    ]
+
+    return torch.cat(padded_sequences, dim=0)
+
 
 
 def train(train_path, test_path, hyperparams, model_suffix, random_seed):
@@ -228,11 +233,15 @@ def train(train_path, test_path, hyperparams, model_suffix, random_seed):
                 end_symbol=eos_idx,
                 beam_size=5,
                 device=hyperparams["device"],
+                pad_idx=pad_idx,  # Pass pad_idx for consistent padding
             )
 
-            token_acc, seq_acc = calculate_accuracy(pred[:, 1:], tgt[:, 1:], pad_idx)
+            # Ensure predictions and targets are the same length
+            pred = pred[:, :tgt.size(1)]  # Truncate if necessary
+            token_acc, seq_acc = calculate_accuracy(pred, tgt[:, 1:], pad_idx)
             token_accuracies.append(token_acc)
             seq_accuracies.append(seq_acc)
+
 
     avg_token_acc = sum(token_accuracies) / len(token_accuracies)
     avg_seq_acc = sum(seq_accuracies) / len(seq_accuracies)
